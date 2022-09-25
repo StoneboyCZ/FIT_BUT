@@ -1,6 +1,6 @@
 '''
     AUTOR: Petr Veigend (iveigend@fit.vut.cz)
-    VERZE: 1.3
+    VERZE: 1.5
     
     Tento skript pouziva REST API IS VUT pro:
     a] ziskani CSV se seznamem rozvhovych jednotek zadaneho typu pro zadany predmet (v souboru s nazvem {idpredmetu}-{casvygenerovani}.csv), ktery je vytvoren v adresari programu
@@ -14,6 +14,8 @@
     POZOR: pokud student jiz ziskal v ramci zadani hodnoceni, neni odlhaseni ze zadani podporovano a je nutne ho prihlasit/odhlasit rucne
 
     CHANGELOG
+    - upraveno pro pouziti v ramci noveho repozitare
+    - upravena logika pro prohazovani studentu mezi zadanimi (zmeny se nove provadi najednou, nikoli po zadanich - predejde se tim problemum s kapacitou)
 '''
 
 import os
@@ -26,12 +28,13 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 )
 sys.path.append(PROJECT_ROOT)
 
+import requests
 import argparse
 from datetime import datetime
 import utils
 
 ######## SETTINGS: nastavte pred pouzitim skriptu ############
-DEBUG = True # False - pracuje s ostrou databazi, True - pracuje s testovaci databazi (testovaci Apollo)
+DEBUG = False # False - pracuje s ostrou databazi, True - pracuje s testovaci databazi (testovaci Apollo)
 VUTID = 110633 # osobni cislo - integer
 COURSE_ID = 230979 # id predmetu, se kterym budete pracovat - integer
 SCHEDULE_UNIT_TYPE = 'Laboratorní cvičení' # typ rozvhove jednotky, pro kterou chcete generovat seznam zadani (seznam rozvrhovych jednotek) - viz https://www.vut.cz/teacher2/cs/predmet-rozvrh-editace? --> Seznam rozvrhových jednotek, nastavte podle potreby
@@ -345,13 +348,13 @@ def updateStudentAssigment(s,operation,courseID, assigmentID,student):
     return r.status_code
         
 def updateAssigment(s, courseID, assigment, studentsAssigment, studentsScheduleUnit):
+    updates = []
     studentsScheduleIDs = [d['el_index_id'] for d in studentsScheduleUnit]
     
     # if there are no students on the assigment, just add all students from the schedule unit
     if len(studentsAssigment) == 0: # new students
         print('Zadani je prazdne, prihlasuji postupne vsechny studenty z rozvrhove jednotky.')
         for student in studentsScheduleUnit:
-            print(student['el_index_id'])
             status = updateStudentAssigment(s,'ADD',courseID,assigment['id'],student['el_index_id'])    
             if status == requests.codes.bad:
                 print(f"ERR: Chyba pri vkladani studenta {student['id']} do zadani.")
@@ -362,33 +365,50 @@ def updateAssigment(s, courseID, assigment, studentsAssigment, studentsScheduleU
         for student in studentsAssigment:     
             
             if student['el_index_id'] not in studentsScheduleIDs: # if a student cancelled the schedule registration, we can remove him from the assigment
-                print(student)
                 if student['pocet_bodu'] is None: # is allowed only if there is no grade
-                    updateStudentAssigment(s,'REMOVE',courseID,assigment['id'],student['el_index_id'])
-                    print(f"OK: Student {student['id']} byl odstranen ze zadani - zmena rozvrhove jednotky.")
+                    #updateStudentAssigment(s,'REMOVE',courseID,assigment['id'],student['el_index_id'])
+                    updates.append({
+                        'student_id':student['id'],
+                        'el_index_id':student['el_index_id'],
+                        'assigment':assigment['id'],
+                        'operation':'REMOVE'
+                    })
+
+                    print(f"OK: Student {student['id']} bude odstranen ze zadani - zmena rozvrhove jednotky.")
                 else:
                     print(f"ERR: Studenta {student['id']} nelze ze zadani odstranit - ma zadano hodnoceni. Je treba ho odstranit rucne.")
             
         # are there any students that are registered in the schedule unit and not registered in the assigment?
         studentsAssigmentIDs = [d['el_index_id'] for d in studentsAssigment]
-        newStudents = [item for item in studentsScheduleIDs if item not in studentsAssigmentIDs]
-        for newStudent in newStudents:
-            print(f'Student {newStudent} se prihlasil nove, provadim registraci na zadani.')
-            updateStudentAssigment(s,'ADD',courseID,assigment['id'],newStudent)        
+        newStudentsIDs = [item for item in studentsScheduleIDs if item not in studentsAssigmentIDs]
+        
+        for st in studentsScheduleUnit:
+            if st['el_index_id'] in newStudentsIDs:
+                updates.append({
+                    'student_id':st['id'],
+                    'el_index_id':st['el_index_id'],
+                    'assigment':assigment['id'],
+                    'operation':'ADD'
+                })
+                print(f"OK: Student {st['id']} se prihlasil nove, bude provedena registrace do zadani.")
 
+        return updates
 def handleAssigment(s, assigment, courseID):
-    print(assigment)
+    print(f'Zadani: {assigment}')
 
     # get students that are currently registrered on the assigment
     studentsAssigment = getStudentsForAssigment(s,courseID,assigment['id'])
     # get students from the window
     studentsScheduleUnit = getStudentsForSchedule(s,courseID,assigment['vyucovani_id'])
 
-    print(studentsAssigment)
-    print(studentsScheduleUnit)
-    # update the students on the assigment
-    updateAssigment(s, courseID, assigment, studentsAssigment, studentsScheduleUnit)
+    # update the students on the assigment (register them to the empty assigment or fetch changes)
+    return updateAssigment(s, courseID, assigment, studentsAssigment, studentsScheduleUnit)
 
+def performUpdates(s,courseID, updates):
+    print('Provadim zmeny')
+    for u in updates:
+        print(f"OK: Student {u['student_id']}, zadani {u['assigment']}, operace {u['operation']}")
+        updateStudentAssigment(s,u['operation'],courseID,u['assigment'],u['el_index_id'])
 
 ##############################################################################################
 
@@ -422,6 +442,8 @@ elif args.reg:
     # ziskat seznam zadani pro hodnoceni
     assigments = getAssigments(s, COURSE_ID, ACTIVITY_ID)
 
+    updates = []
+
     for a in assigments:
         # match the created assigment to the schedule window
         a['vyucovani_id'] = matchAssigmentToSchedule(s,COURSE_ID,SCHEDULE_UNIT_TYPE,a,LANG)
@@ -429,4 +451,12 @@ elif args.reg:
             print('ERR: Nepodarilo se namapovat zadani a rozvrhovou jednotku. Pravdepodobne je zadan spatny typ rozvrhove jednotky v konstante SCHEDULE_UNIT_TYPE.')
         else:
             # handle students on the assigment
-            handleAssigment(s,a, COURSE_ID)        
+            update = handleAssigment(s,a, COURSE_ID)
+            if update:
+                for u in update:
+                    updates.append(u)       
+
+    # were there any updates that have to be performed?
+    if len(updates) > 0:
+        sortedUpdates = sorted(updates, key=lambda d: d['operation'],reverse=True)
+        performUpdates(s,COURSE_ID,sortedUpdates)
