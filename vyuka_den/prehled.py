@@ -1,22 +1,15 @@
-import requests
-from requests.auth import HTTPBasicAuth
-import getpass
 from datetime import datetime
+import os
+import sys
 
-def createSession(id):
-    """Function creates a session for communication with IS VUT
+# https://towardsdatascience.com/understanding-python-imports-init-py-and-pythonpath-once-and-for-all-4c5249ab6355
+PROJECT_ROOT = os.path.abspath(os.path.join(
+                  os.path.dirname(__file__), 
+                  os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
 
-    Args:
-        id (_type_): BUT personal ID
-
-    Returns:
-        _type_: session 
-    """
-    s = requests.Session()
-    password=getpass.getpass(prompt="Password: ", stream=None)
-    s.auth = HTTPBasicAuth(id, password)
-    
-    return s 
+import utils
 
 def getRooms(s):
     url = 'https://api.vut.cz/api/fit/mistnosti/v4?lang=cs&rozvrhovane=1&aktualni=1'
@@ -71,7 +64,7 @@ def getSchedule(s, room, date):
 
 ID = 110633
 DATE = '17.11.2022' 
-s = createSession(ID)
+s = utils.createSession(ID)
 rooms = getRooms(s)
 
 current_time = datetime.now().strftime("%m-%d-%Y_%H%M%S")

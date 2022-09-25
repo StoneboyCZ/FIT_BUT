@@ -15,11 +15,20 @@
 
     CHANGELOG
 '''
-import requests
-from requests.auth import HTTPBasicAuth
-import getpass
+
+import os
+import sys
+
+# https://towardsdatascience.com/understanding-python-imports-init-py-and-pythonpath-once-and-for-all-4c5249ab6355
+PROJECT_ROOT = os.path.abspath(os.path.join(
+                  os.path.dirname(__file__), 
+                  os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
+
 import argparse
 from datetime import datetime
+import utils
 
 ######## SETTINGS: nastavte pred pouzitim skriptu ############
 DEBUG = True # False - pracuje s ostrou databazi, True - pracuje s testovaci databazi (testovaci Apollo)
@@ -53,21 +62,6 @@ DAYS_EN = {
     5:'Friday'
 }
 
-
-def createSession(id):
-    """Function creates a session for communication with IS VUT
-
-    Args:
-        id (_type_): BUT personal ID
-
-    Returns:
-        _type_: session 
-    """
-    s = requests.Session()
-    password=getpass.getpass(prompt="Password: ", stream=None)
-    s.auth = HTTPBasicAuth(id, password)
-    
-    return s 
 
 def getCourseSchedule(s, courseID, unitType):
     """Gets a schedule for a course specified by its ID.
@@ -412,7 +406,7 @@ parser.add_argument(
     )
 
 args = parser.parse_args()
-s = createSession(VUTID)
+s = utils.createSession(VUTID)
 if args.csv:
     params = {}
     params['text'] = TEXT
