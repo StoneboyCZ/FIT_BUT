@@ -15,7 +15,6 @@
 
     CHANGELOG
 '''
-from tkinter.messagebox import QUESTION
 import requests
 from requests.auth import HTTPBasicAuth
 import getpass
