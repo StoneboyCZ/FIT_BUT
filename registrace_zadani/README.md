@@ -7,5 +7,8 @@
 Před použitím skriptu je nutné nastavit parametry v sekci SETTINGS (ve skriptu úplně nahoře). Lze ho použít ve dvou režimech:
 
 * vytvoření CSV se seznamem zadání na základě rozvrhových jednotek (parametr --csv)
-* registrace studentů do zadání importovaných z vytvořeného CSV v modulu Vypisování zadání 
+* registrace studentů do zadání importovaných z vytvořeného CSV v modulu Vypisování zadání (parametr --reg)
 
+## TODO
+
+* práce s týmovými zadáními
