@@ -49,23 +49,6 @@ QUESTIONS = 6 # pocet otazek (pokud se bude zadani skladat z vice casti - vice c
 LANG = 'cs' # moznosti cs a en; urcuje, jestli bude generovaný název termínu česky nebo anglicky
 ###############################################################
 
-DAYS = {
-    1:'Pondělí',
-    2:'Úterý',
-    3:'Středa',
-    4:'Čtvrtek',
-    5:'Pátek'
-}
-
-DAYS_EN = {
-    1:'Monday',
-    2:'Tuesday',
-    3:'Wednesday',
-    4:'Thursday',
-    5:'Friday'
-}
-
-
 def getCourseSchedule(s, courseID, unitType):
     """Gets a schedule for a course specified by its ID.
 
@@ -194,8 +177,8 @@ def parseScheduleData(unit, VUTid, lang):
 
     bloky = unit['bloky']
     for b in bloky:
-        e['den'] = DAYS[b['vb_den_id']]
-        e['den_en'] = DAYS_EN[b['vb_den_id']]
+        e['den'] = utils.DAYS[b['vb_den_id']]
+        e['den_en'] = utils.DAYS_EN[b['vb_den_id']]
         cas = b['vb_cas_od'].split('T')[1]
         e['cas_od'] = f"{cas.split(':')[0]}:{cas.split(':')[1]}"
 

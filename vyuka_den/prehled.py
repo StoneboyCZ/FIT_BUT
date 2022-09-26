@@ -11,26 +11,6 @@ sys.path.append(PROJECT_ROOT)
 
 import utils
 
-def getRooms(s):
-    url = 'https://api.vut.cz/api/fit/mistnosti/v4?lang=cs&rozvrhovane=1&aktualni=1'
-    data = s.get(url).json()['data']['lokality']
-    
-    rooms = []
-    for l in data:
-        if l['lokalita_id'] == 3:
-            for a in l['arealy']:
-                if a['areal_id'] == 17:
-                    for b in a['budovy']:
-                        for p in b['podlazi']:
-                            for m in p['mistnosti']:
-                                room = {
-                                    'id':m['mistnost_id'],
-                                    'name':m['label']
-                                }
-                                rooms.append(room)
-
-    return rooms
-
 def getSchedule(s, room, date):
     date_is = f"{date.split('.')[2]}-{date.split('.')[1]}-{date.split('.')[0]}T00:00:00"
     url = f"https://api.vut.cz/api/fit/mistnost/{room}/vyucovani/v3?lang=cs&rok=2022&datum_od={date}&datum_do={date}"
@@ -65,7 +45,7 @@ def getSchedule(s, room, date):
 ID = 110633
 DATE = '17.11.2022' 
 s = utils.createSession(ID)
-rooms = getRooms(s)
+rooms = utils.getRooms(s)
 
 current_time = datetime.now().strftime("%m-%d-%Y_%H%M%S")
 with open(f'{DATE}-{current_time}.txt', 'w', encoding='utf-8') as f:
