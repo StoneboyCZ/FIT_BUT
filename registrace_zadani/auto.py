@@ -1,6 +1,6 @@
 '''
     AUTOR: Petr Veigend (iveigend@fit.vut.cz)
-    VERZE: 1.5
+    VERZE: 1.6
     
     Tento skript pouziva REST API IS VUT pro:
     a] ziskani CSV se seznamem rozvhovych jednotek zadaneho typu pro zadany predmet (v souboru s nazvem {idpredmetu}-{casvygenerovani}.csv), ktery je vytvoren v adresari programu
@@ -16,6 +16,7 @@
     CHANGELOG
     - upraveno pro pouziti v ramci noveho repozitare
     - upravena logika pro prohazovani studentu mezi zadanimi (zmeny se nove provadi najednou, nikoli po zadanich - predejde se tim problemum s kapacitou)
+    - 1.6: upraveno chovani pri vkladani studentu poprve
 '''
 
 import os
@@ -36,9 +37,9 @@ import utils
 ######## SETTINGS: nastavte pred pouzitim skriptu ############
 DEBUG = False # False - pracuje s ostrou databazi, True - pracuje s testovaci databazi (testovaci Apollo)
 VUTID = 110633 # osobni cislo - integer
-COURSE_ID = 231045 # id predmetu, se kterym budete pracovat - integer
-SCHEDULE_UNIT_TYPE = 'Cvičení na počítači' # typ rozvhove jednotky, pro kterou chcete generovat seznam zadani (seznam rozvrhovych jednotek) - viz https://www.vut.cz/teacher2/cs/predmet-rozvrh-editace? --> Seznam rozvrhových jednotek, nastavte podle potreby
-ACTIVITY_ID = 112502 # ID hodnoceni, ve kterem budete chtit zadani vytvorit (zobrazte si spravny sloupec ve strukture hodnoceni https://www.vut.cz/teacher2/cs/predmet-struktura-hodnoceni)
+COURSE_ID = 268226 # id predmetu, se kterym budete pracovat - integer
+SCHEDULE_UNIT_TYPE = 'Laboratorní cvičení' # typ rozvhove jednotky, pro kterou chcete generovat seznam zadani (seznam rozvrhovych jednotek) - viz https://www.vut.cz/teacher2/cs/predmet-rozvrh-editace? --> Seznam rozvrhových jednotek, nastavte podle potreby
+ACTIVITY_ID = 125470 # ID hodnoceni, ve kterem budete chtit zadani vytvorit (zobrazte si spravny sloupec ve strukture hodnoceni https://www.vut.cz/teacher2/cs/predmet-struktura-hodnoceni)
 
 ## dalsi parametry pro zadani - pred vygenerovanim CSV je nutne nastavit
 TEXT = "Hodnocení laboratoří IEL" # povinna polozka 
@@ -345,6 +346,8 @@ def updateAssigment(s, courseID, assigment, studentsAssigment, studentsScheduleU
                 print(f"ERR: Chyba pri vkladani studenta {student['id']} do zadani.")
             else:
                 print(f"OK: Student {student['id']} vlozen do zadani.")
+        
+        return updates,ignore
     else: # students already on assigment
         # iterate over all students in the assigment
         for student in studentsAssigment:     
@@ -441,7 +444,10 @@ elif args.reg:
             print('ERR: Nepodarilo se namapovat zadani a rozvrhovou jednotku. Pravdepodobne je zadan spatny typ rozvrhove jednotky v konstante SCHEDULE_UNIT_TYPE.')
         else:
             # handle students on the assigment
+            print('test')
             update,ignore = handleAssigment(s,a, COURSE_ID)
+            print(update)
+            print(ignore)
             if update:
                 for u in update:
                     updates.append(u)       
